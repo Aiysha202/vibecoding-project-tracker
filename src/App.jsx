@@ -1,53 +1,30 @@
 
 import { useState, useEffect } from 'react';
 
-/**
- * Aiysha's Kanban — Vibecoding Project Tracker
- *
- * M4  data-model: Four-column board with example tasks.
- * M5  crud-modal: Add, edit and delete tasks.
- * M6  tag-style: Feature and bug colours.
- * M7  task-owner: Assignee and hand-off.
- * M8  due-tint: Deadline indicators.
- * M9  context: AI prompt context.
- * M10 copy-prompt: Copy formatted context.
- * M11 anchors: Project deliverables.
- * M12 secret-sauce: Unique project feature.
- */
+// ========================================
+// AIYSHA'S KANBAN — M4 + M5
+// ========================================
 
-/**
- * @typedef {Object} Task
- * @property {string} id
- * @property {string} title
- * @property {string} description
- * @property {'feature'|'bug'} type
- * @property {'todo'|'in-progress'|'review'|'done'} status
- * @property {string} assignee
- * @property {string|null} dueDate
- * @property {string} createdDate
- */
-
-// Original locked stages — unchanged.
 export const STAGES = [
-  { id: 'todo',        label: 'To Do' },
+  { id: 'todo', label: 'To Do' },
   { id: 'in-progress', label: 'In Progress' },
-  { id: 'review',      label: 'Review' },
-  { id: 'done',        label: 'Done' },
+  { id: 'review', label: 'Review' },
+  { id: 'done', label: 'Done' }
 ];
 
-// Replace placeholders with actual team members.
 export const TEAM = [
   'Teammate A',
   'Teammate B',
   'Teammate C'
 ];
 
-// Original localStorage hook — unchanged.
 export function useLocalStorage(key, initialValue) {
   const [value, setValue] = useState(() => {
     try {
-      const raw = window.localStorage.getItem(key);
-      return raw != null ? JSON.parse(raw) : initialValue;
+      const saved = window.localStorage.getItem(key);
+      return saved !== null
+        ? JSON.parse(saved)
+        : initialValue;
     } catch {
       return initialValue;
     }
@@ -55,9 +32,12 @@ export function useLocalStorage(key, initialValue) {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(key, JSON.stringify(value));
+      window.localStorage.setItem(
+        key,
+        JSON.stringify(value)
+      );
     } catch {
-      /* quota or private-mode error — silently ignore for hackathon */
+      // Ignore localStorage errors.
     }
   }, [key, value]);
 
@@ -65,7 +45,7 @@ export function useLocalStorage(key, initialValue) {
 }
 
 // ========================================
-// M4 — EXAMPLE TASKS
+// STARTER TASKS
 // ========================================
 
 const SEED_TASKS = [
@@ -112,7 +92,7 @@ const SEED_TASKS = [
 ];
 
 // ========================================
-// BOARD COLOURS
+// COLUMN STYLES
 // ========================================
 
 const STAGE_STYLES = {
@@ -138,47 +118,338 @@ const STAGE_STYLES = {
 // TASK CARD
 // ========================================
 
-function TaskCard({ task }) {
-  const initials = task.assignee
+function TaskCard({ task, onEdit }) {
+  const initials = (task.assignee || '')
     .split(' ')
     .filter(Boolean)
-    .map(name => name[0])
+    .map((name) => name[0])
     .slice(0, 2)
     .join('')
     .toUpperCase();
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
-
+    <button
+      type="button"
+      onClick={() => onEdit(task)}
+      aria-label={`Edit ${task.title}`}
+      className="block w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+    >
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-medium text-slate-400">
+        <span className="min-w-0 truncate text-[11px] font-medium text-slate-400">
           {task.id}
         </span>
 
-        <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase text-slate-600">
+        <span className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase text-slate-600">
           {task.type}
         </span>
       </div>
 
-      <h3 className="text-sm font-semibold leading-6 text-slate-900">
+      <h3 className="break-words text-sm font-semibold leading-6 text-slate-900">
         {task.title}
       </h3>
 
-      <p className="mt-2 text-xs leading-5 text-slate-500">
-        {task.description}
+      <p className="mt-2 break-words text-xs leading-5 text-slate-500">
+        {task.description || 'No description provided.'}
       </p>
 
       <div className="mt-5 flex items-center gap-2 border-t border-slate-100 pt-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">
-          {initials}
+          {initials || '?'}
         </div>
 
         <span className="truncate text-xs font-medium text-slate-600">
           {task.assignee}
         </span>
       </div>
+    </button>
+  );
+}
 
-    </article>
+// ========================================
+// M5 — ADD / EDIT / DELETE MODAL
+// ========================================
+
+function TaskModal({
+  task,
+  isNew,
+  onSave,
+  onDelete,
+  onClose
+}) {
+  const [form, setForm] = useState({ ...task });
+  const [error, setError] = useState('');
+
+  function update(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  useEffect(() => {
+    function handleEscape(event) {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      window.removeEventListener(
+        'keydown',
+        handleEscape
+      );
+    };
+  }, [onClose]);
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!form.title.trim()) {
+      setError('Please enter a task title.');
+      return;
+    }
+
+    onSave({
+      ...form,
+      title: form.title.trim(),
+      description: (form.description || '').trim(),
+      dueDate: form.dueDate || null
+    });
+  }
+
+  const fieldClass =
+    'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
+
+  const labelClass =
+    'mb-1.5 block text-xs font-semibold text-slate-700';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-modal-title"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+      >
+        <div className="mb-6 flex items-start justify-between gap-3">
+          <div>
+            <h2
+              id="task-modal-title"
+              className="text-xl font-bold text-slate-900"
+            >
+              {isNew ? 'Create New Task' : 'Edit Task'}
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              {isNew
+                ? 'Add a task to your project board.'
+                : 'Update your task information.'}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close task form"
+            className="rounded-lg px-2 py-1 text-xl text-slate-500 hover:bg-slate-100"
+          >
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="task-title"
+              className={labelClass}
+            >
+              Task Title *
+            </label>
+
+            <input
+              id="task-title"
+              autoFocus
+              value={form.title}
+              onChange={(event) => {
+                update('title', event.target.value);
+                setError('');
+              }}
+              placeholder="e.g. Build login page"
+              className={fieldClass}
+            />
+
+            {error && (
+              <p
+                role="alert"
+                className="mt-1 text-xs text-rose-600"
+              >
+                {error}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="task-description"
+              className={labelClass}
+            >
+              Description
+            </label>
+
+            <textarea
+              id="task-description"
+              rows={3}
+              value={form.description || ''}
+              onChange={(event) =>
+                update('description', event.target.value)
+              }
+              placeholder="Describe what needs to be done..."
+              className={fieldClass}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="task-type"
+                className={labelClass}
+              >
+                Task Type
+              </label>
+
+              <select
+                id="task-type"
+                value={form.type}
+                onChange={(event) =>
+                  update('type', event.target.value)
+                }
+                className={fieldClass}
+              >
+                <option value="feature">Feature</option>
+                <option value="bug">Bug</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="task-status"
+                className={labelClass}
+              >
+                Status
+              </label>
+
+              <select
+                id="task-status"
+                value={form.status}
+                onChange={(event) =>
+                  update('status', event.target.value)
+                }
+                className={fieldClass}
+              >
+                {STAGES.map((stage) => (
+                  <option key={stage.id} value={stage.id}>
+                    {stage.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="task-assignee"
+                className={labelClass}
+              >
+                Assigned To
+              </label>
+
+              <select
+                id="task-assignee"
+                value={form.assignee}
+                onChange={(event) =>
+                  update('assignee', event.target.value)
+                }
+                className={fieldClass}
+              >
+                {TEAM.map((member) => (
+                  <option key={member} value={member}>
+                    {member}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="task-due"
+                className={labelClass}
+              >
+                Due Date
+              </label>
+
+              <input
+                id="task-due"
+                type="date"
+                value={form.dueDate || ''}
+                onChange={(event) =>
+                  update('dueDate', event.target.value)
+                }
+                className={fieldClass}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
+            <div>
+              {!isNew && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        'Delete this task? This cannot be undone.'
+                      )
+                    ) {
+                      onDelete(form.id);
+                    }
+                  }}
+                  className="rounded-lg px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+                >
+                  Delete Task
+                </button>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                {isNew ? 'Create Task' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -187,40 +458,72 @@ function TaskCard({ task }) {
 // ========================================
 
 export default function App() {
-
-  // M4 — Persistent task data.
   const [tasks, setTasks] = useLocalStorage(
     'vibetracker.tasks',
     SEED_TASKS
   );
 
-  // TODO M5 crud-modal:
-  // const [editing, setEditing] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
+  const [isCreating, setIsCreating] = useState(false);
 
-  // TODO M11 anchors:
-  // const [anchors, setAnchors] =
-  //   useLocalStorage('vibetracker.anchors', []);
+  // ======================================
+  // M5 — TASK OPERATIONS
+  // ======================================
+
+  function createTask() {
+    const newTask = {
+      id: crypto.randomUUID(),
+      title: '',
+      description: '',
+      type: 'feature',
+      status: 'todo',
+      assignee: TEAM[0],
+      dueDate: null,
+      createdDate: new Date().toISOString().slice(0, 10)
+    };
+
+    setEditingTask(newTask);
+    setIsCreating(true);
+  }
+
+  function editTask(task) {
+    setEditingTask(task);
+    setIsCreating(false);
+  }
+
+  function closeModal() {
+    setEditingTask(null);
+    setIsCreating(false);
+  }
+
+  function saveTask(task) {
+    if (isCreating) {
+      setTasks((current) => [...current, task]);
+    } else {
+      setTasks((current) =>
+        current.map((item) =>
+          item.id === task.id ? task : item
+        )
+      );
+    }
+
+    closeModal();
+  }
+
+  function deleteTask(id) {
+    setTasks((current) =>
+      current.filter((task) => task.id !== id)
+    );
+
+    closeModal();
+  }
 
   const totalTasks = tasks.length;
-
-  const completedTasks = tasks.filter(
-    task => task.status === 'done'
-  ).length;
-
-  const inProgressTasks = tasks.filter(
-    task => task.status === 'in-progress'
-  ).length;
-
-  const progress = totalTasks
-    ? Math.round((completedTasks / totalTasks) * 100)
-    : 0;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
 
-      {/* ================================== */}
-      {/* HEADER — AIYSHA'S KANBAN           */}
-      {/* ================================== */}
+      {/* HEADER */}
 
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-8">
@@ -243,6 +546,7 @@ export default function App() {
 
           <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
+
             <span className="text-xs font-medium text-emerald-700">
               Project Workspace
             </span>
@@ -251,136 +555,45 @@ export default function App() {
         </div>
       </header>
 
-      {/* ================================== */}
-      {/* MAIN CONTENT                       */}
-      {/* ================================== */}
+      {/* MAIN CONTENT — NO DASHBOARD */}
 
       <div className="mx-auto max-w-[1600px] px-5 py-8 sm:px-8">
 
-        <section className="mb-7">
-          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-600">
-            MY WORKSPACE
-          </p>
+        {/* MY TASKS HEADER */}
 
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">
-            Project Board
-          </h2>
-
-          <p className="mt-2 text-sm text-slate-500">
-            Organise your tasks, track your progress and
-            keep everything in one place.
-          </p>
-        </section>
-
-        {/* ================================== */}
-        {/* COMPACT PROJECT OVERVIEW           */}
-        {/* ================================== */}
-
-        <section className="mb-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-500">
-              Total Tasks
-            </p>
-
-            <p className="mt-2 text-2xl font-bold text-slate-900">
-              {totalTasks}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-500">
-              In Progress
-            </p>
-
-            <p className="mt-2 text-2xl font-bold text-blue-600">
-              {inProgressTasks}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-500">
-              Completed
-            </p>
-
-            <p className="mt-2 text-2xl font-bold text-emerald-600">
-              {completedTasks}
-            </p>
-          </div>
-
-        </section>
-
-        {/* ================================== */}
-        {/* PROJECT PROGRESS                   */}
-        {/* ================================== */}
-
-        <section className="mb-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-800">
-              Overall Progress
-            </h3>
-
-            <span className="text-sm font-bold text-blue-600">
-              {progress}%
-            </span>
-          </div>
-
-          <div
-            className="h-2.5 overflow-hidden rounded-full bg-slate-100"
-            role="progressbar"
-            aria-label="Project completion"
-            aria-valuenow={progress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <div
-              className="h-full rounded-full bg-blue-600 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-
-        </section>
-
-        {/* TODO M11 anchors:
-            Render the deliverables board here.
-        */}
-
-        {/* ================================== */}
-        {/* KANBAN BOARD HEADER                */}
-        {/* ================================== */}
-
-        <section className="mb-5 flex items-center justify-between gap-3">
+        <section className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
               My Tasks
             </h2>
 
-            <p className="mt-1 text-xs text-slate-500">
-              Your project workflow at a glance.
+            <p className="mt-1 text-sm text-slate-500">
+              Manage your project tasks in one place.
             </p>
           </div>
 
-          <span className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600">
-            {totalTasks} tasks
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600">
+              {totalTasks} tasks
+            </span>
+
+            <button
+              type="button"
+              onClick={createTask}
+              className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              + New Task
+            </button>
+          </div>
         </section>
 
-        {/* TODO M5 crud-modal:
-            Add the new task button and editing modal.
-        */}
-
-        {/* ================================== */}
-        {/* M4 — FOUR COLUMN BOARD             */}
-        {/* NO HORIZONTAL SCROLLING            */}
-        {/* ================================== */}
+        {/* FOUR-COLUMN KANBAN BOARD */}
 
         <main className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-4">
 
-          {STAGES.map(stage => {
-
+          {STAGES.map((stage) => {
             const stageTasks = tasks.filter(
-              task => task.status === stage.id
+              (task) => task.status === stage.id
             );
 
             const style = STAGE_STYLES[stage.id];
@@ -390,9 +603,7 @@ export default function App() {
                 key={stage.id}
                 className="min-w-0 rounded-xl border border-slate-200 bg-slate-100/70 p-3"
               >
-
                 <div className="mb-4 flex items-center justify-between px-1 py-2">
-
                   <div className="flex min-w-0 items-center gap-2">
                     <span
                       className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`}
@@ -408,15 +619,14 @@ export default function App() {
                   >
                     {stageTasks.length}
                   </span>
-
                 </div>
 
                 <div className="space-y-3">
-
-                  {stageTasks.map(task => (
+                  {stageTasks.map((task) => (
                     <TaskCard
                       key={task.id}
                       task={task}
+                      onEdit={editTask}
                     />
                   ))}
 
@@ -427,38 +637,11 @@ export default function App() {
                       </p>
                     </div>
                   )}
-
                 </div>
-
               </section>
             );
           })}
-
         </main>
-
-        {/* TODO M6 tag-style:
-            Add feature vs bug styling.
-        */}
-
-        {/* TODO M7 task-owner:
-            Add hand-off dropdown.
-        */}
-
-        {/* TODO M8 due-tint:
-            Add deadline colour indicators.
-        */}
-
-        {/* TODO M9 context:
-            Add AI prompt context field.
-        */}
-
-        {/* TODO M10 copy-prompt:
-            Add copy context button.
-        */}
-
-        {/* TODO M12 secret-sauce:
-            Add unique project feature.
-        */}
 
         <footer className="mt-10 border-t border-slate-200 pt-5 text-center">
           <p className="text-xs text-slate-400">
@@ -467,6 +650,20 @@ export default function App() {
         </footer>
 
       </div>
+
+      {/* M5 — CREATE / EDIT MODAL */}
+
+      {editingTask && (
+        <TaskModal
+          key={editingTask.id}
+          task={editingTask}
+          isNew={isCreating}
+          onSave={saveTask}
+          onDelete={deleteTask}
+          onClose={closeModal}
+        />
+      )}
+
     </div>
   );
 }
