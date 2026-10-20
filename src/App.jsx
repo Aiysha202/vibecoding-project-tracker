@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 
 // ========================================
-// AIYSHA'S KANBAN — M4 + M5
+// AIYSHA'S KANBAN — M4 + M5 + M6
 // ========================================
 
 export const STAGES = [
@@ -18,10 +18,15 @@ export const TEAM = [
   'Teammate C'
 ];
 
+// ========================================
+// LOCAL STORAGE
+// ========================================
+
 export function useLocalStorage(key, initialValue) {
   const [value, setValue] = useState(() => {
     try {
       const saved = window.localStorage.getItem(key);
+
       return saved !== null
         ? JSON.parse(saved)
         : initialValue;
@@ -37,7 +42,7 @@ export function useLocalStorage(key, initialValue) {
         JSON.stringify(value)
       );
     } catch {
-      // Ignore localStorage errors.
+      // Ignore storage errors.
     }
   }, [key, value]);
 
@@ -115,10 +120,12 @@ const STAGE_STYLES = {
 };
 
 // ========================================
-// TASK CARD
+// M6 — FEATURE / BUG TASK CARDS
 // ========================================
 
 function TaskCard({ task, onEdit }) {
+  const isBug = task.type === 'bug';
+
   const initials = (task.assignee || '')
     .split(' ')
     .filter(Boolean)
@@ -127,33 +134,59 @@ function TaskCard({ task, onEdit }) {
     .join('')
     .toUpperCase();
 
+  const cardStyle = isBug
+    ? 'border-l-4 border-l-rose-500 hover:border-rose-300'
+    : 'border-l-4 border-l-blue-500 hover:border-blue-300';
+
+  const badgeStyle = isBug
+    ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
+    : 'bg-blue-50 text-blue-700 ring-1 ring-blue-200';
+
   return (
     <button
       type="button"
       onClick={() => onEdit(task)}
       aria-label={`Edit ${task.title}`}
-      className="block w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      className={`block w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${cardStyle}`}
     >
+      {/* TASK ID AND TYPE */}
+
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="min-w-0 truncate text-[11px] font-medium text-slate-400">
           {task.id}
         </span>
 
-        <span className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase text-slate-600">
-          {task.type}
+        <span
+          className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${badgeStyle}`}
+        >
+          <span aria-hidden="true">
+            {isBug ? '●' : '✦'}
+          </span>
+
+          {isBug ? 'Bug' : 'Feature'}
         </span>
       </div>
+
+      {/* TASK TITLE */}
 
       <h3 className="break-words text-sm font-semibold leading-6 text-slate-900">
         {task.title}
       </h3>
 
+      {/* TASK DESCRIPTION */}
+
       <p className="mt-2 break-words text-xs leading-5 text-slate-500">
         {task.description || 'No description provided.'}
       </p>
 
-      <div className="mt-5 flex items-center gap-2 border-t border-slate-100 pt-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">
+      {/* ASSIGNEE */}
+
+      <div className="mt-5 flex w-full items-center gap-2 border-t border-slate-100 pt-3">
+        <div
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${
+            isBug ? 'bg-rose-600' : 'bg-blue-600'
+          }`}
+        >
           {initials || '?'}
         </div>
 
@@ -166,7 +199,7 @@ function TaskCard({ task, onEdit }) {
 }
 
 // ========================================
-// M5 — ADD / EDIT / DELETE MODAL
+// M5 — CREATE / EDIT / DELETE MODAL
 // ========================================
 
 function TaskModal({
@@ -240,6 +273,8 @@ function TaskModal({
         aria-labelledby="task-modal-title"
         className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
       >
+        {/* MODAL HEADER */}
+
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
             <h2
@@ -266,7 +301,12 @@ function TaskModal({
           </button>
         </div>
 
+        {/* TASK FORM */}
+
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* TITLE */}
+
           <div>
             <label
               htmlFor="task-title"
@@ -297,6 +337,8 @@ function TaskModal({
             )}
           </div>
 
+          {/* DESCRIPTION */}
+
           <div>
             <label
               htmlFor="task-description"
@@ -316,6 +358,8 @@ function TaskModal({
               className={fieldClass}
             />
           </div>
+
+          {/* TASK TYPE AND STATUS */}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -364,6 +408,8 @@ function TaskModal({
             </div>
           </div>
 
+          {/* ASSIGNEE AND DUE DATE */}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label
@@ -375,11 +421,11 @@ function TaskModal({
 
               <select
                 id="task-assignee"
+                className={fieldClass}
                 value={form.assignee}
                 onChange={(event) =>
                   update('assignee', event.target.value)
                 }
-                className={fieldClass}
               >
                 {TEAM.map((member) => (
                   <option key={member} value={member}>
@@ -408,6 +454,8 @@ function TaskModal({
               />
             </div>
           </div>
+
+          {/* ACTION BUTTONS */}
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
             <div>
@@ -447,6 +495,7 @@ function TaskModal({
               </button>
             </div>
           </div>
+
         </form>
       </div>
     </div>
@@ -467,7 +516,7 @@ export default function App() {
   const [isCreating, setIsCreating] = useState(false);
 
   // ======================================
-  // M5 — TASK OPERATIONS
+  // TASK OPERATIONS
   // ======================================
 
   function createTask() {
@@ -498,7 +547,10 @@ export default function App() {
 
   function saveTask(task) {
     if (isCreating) {
-      setTasks((current) => [...current, task]);
+      setTasks((current) => [
+        ...current,
+        task
+      ]);
     } else {
       setTasks((current) =>
         current.map((item) =>
@@ -587,9 +639,9 @@ export default function App() {
           </div>
         </section>
 
-        {/* FOUR-COLUMN KANBAN BOARD */}
+        {/* FOUR EQUAL-HEIGHT OUTER COLUMNS */}
 
-        <main className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <main className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:grid-cols-4">
 
           {STAGES.map((stage) => {
             const stageTasks = tasks.filter(
@@ -643,6 +695,8 @@ export default function App() {
           })}
         </main>
 
+        {/* FOOTER */}
+
         <footer className="mt-10 border-t border-slate-200 pt-5 text-center">
           <p className="text-xs text-slate-400">
             Aiysha's Kanban · UXD Vibecoding Hackathon 2026
@@ -651,7 +705,7 @@ export default function App() {
 
       </div>
 
-      {/* M5 — CREATE / EDIT MODAL */}
+      {/* CREATE / EDIT MODAL */}
 
       {editingTask && (
         <TaskModal
