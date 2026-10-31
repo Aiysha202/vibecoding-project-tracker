@@ -6251,6 +6251,72 @@ const RAW_CSS = `
 }
 .team-member-email { display: block; }
 
+
+/* ---------- Mobile header: prevent horizontal page overflow ---------- */
+@media (max-width: 700px) {
+  .tracker, .tracker .app-workspace, .tracker .app-content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .tracker .app-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tracker .header-left {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tracker .app-brand { min-width: 0; }
+  .tracker .app-brand > span { overflow-wrap: anywhere; }
+
+  .tracker .header-right {
+    display: flex;
+    flex: none;
+    flex-wrap: wrap;
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+
+  .tracker .header-search {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .tracker .display-wrap { flex: 0 0 auto; }
+  .tracker .logout-button,
+  .tracker .new-task-button {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .tracker .summary-grid,
+  .tracker .overview-details-grid {
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .tracker .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tracker .new-task-button span { display: inline; }
+}
+
 `;
 
 // Scale every px font-size with the "Text size" setting.
