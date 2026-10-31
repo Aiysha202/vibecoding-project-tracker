@@ -337,8 +337,7 @@ function timeAgo(value) {
    21 sample tasks: three relevant tasks for each of seven team members.
    Sample statuses and relative due dates demonstrate the interface; they
    DO NOT claim that real people completed or performed this work.
-   To apply this sample to an existing browser, choose Team > Demo options
-   > Load example tasks only (after saving any real edits).
+   Example tasks populate the initial tracker for demonstration.
    ========================================================= */
 
 function makeWebsiteTask(number, title, description, assignee, priority, type, context = "") {
@@ -2948,16 +2947,6 @@ function TeamView({ tasks, members, project, onProject, onReset, onLoadExampleTa
           <input value={project.project} maxLength={80}
             onChange={(e) => onProject({ ...project, project: e.target.value })} />
         </label>
-        <details className="sample-tools">
-          <summary>Demo options</summary>
-          <p>Example tasks, dates and statuses demonstrate the tracker; they are not real completed work. Loading a sample replaces existing tasks, so save anything important first.</p>
-          <button type="button" className="button button-secondary" onClick={onLoadExampleTasks}>
-            Load example tasks only (keep team profiles)
-          </button>
-          <button type="button" className="button button-secondary" onClick={onReset}>
-            Load example tasks and members
-          </button>
-        </details>
       </div>
 
       {editingId !== null && (
@@ -6315,6 +6304,36 @@ const RAW_CSS = `
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .tracker .new-task-button span { display: inline; }
+}
+
+
+/* Mobile display settings: use a viewport-centred, scrollable dialog.
+   This overrides the desktop dropdown and the old right:-65px rule. */
+@media (max-width: 700px) {
+  .tracker .display-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    box-sizing: border-box;
+    width: calc(100vw - 24px);
+    max-width: 420px;
+    max-height: calc(100dvh - 32px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 16px 12px;
+    z-index: 200;
+  }
+  .tracker .display-panel .theme-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .tracker .display-panel .text-size-controls {
+    flex-wrap: wrap;
+  }
 }
 
 `;
